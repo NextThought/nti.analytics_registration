@@ -12,3 +12,5 @@ logger = __import__('logging').getLogger(__name__)
 from nti.analytics_registration.database import registration as db_registration
 
 get_registrations = db_registration.get_registrations
+store_registration_data = db_registration.store_registration_data
+store_registration_survey_data = db_registration.store_registration_survey_data
