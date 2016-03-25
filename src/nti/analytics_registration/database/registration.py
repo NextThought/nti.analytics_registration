@@ -48,43 +48,30 @@ from nti.analytics.database.query_utils import get_filtered_records
 # FIXME: JZ - Table creation disabled for now
 Base = object()
 
-class UserRegistration(Base, BaseTableMixin):
+class UserRegistrations(Base, BaseTableMixin):
 	"""
-	Hold user registration information.
+	Hold user registration information. The 'registration_ds_id'
+	will typically be a string identifier.
 	XXX: i2 specific? place in site?
 	"""
-	__tablename__ = 'UserRegistration'
+	__tablename__ = 'UserRegistrations'
 
-	# XXX: Unique by user and session_date?
 	registration_id = Column('registration_id', Integer,
 							Sequence('registration_id_seq'),
 							index=True, nullable=False, primary_key=True)
+
+	registration_ds_id = Column('registration_ds_id', String(128),
+								nullable=False, index=True, autoincrement=False)
 
 	school = Column( 'school', String(128), nullable=True, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=True, index=False )
 	curriculum = Column( 'curriculum', String(64), nullable=True, index=False )
 	session_date = Column( 'session_date', String(32), nullable=True, index=False )
 
-class RegistrationSurveys(Base):
-	"""
-	Hold basic survey information.
-	"""
-	__tablename__ = 'RegistrationSurveys'
-
-	#: This will not be an actual object (or NTIID), but
-	#: may just be a URL of the survey form.
-	registration_survey_ds_id = Column('registration_survey_ds_id', NTIID_COLUMN_TYPE,
-										nullable=False, index=True, autoincrement=False)
-
-	registration_survey_id = Column('registration_survey_id', Integer,
-									Sequence('registration_survey_id_seq'),
-									index=True, nullable=False, primary_key=True)
-
-	submissions = relationship( 'RegistrationSurveysTaken', lazy="select" )
-
 class RegistrationSurveysTaken(Base, BaseTableMixin):
 	"""
-	Contains information when users submit RegistrationSurvey responses.
+	Contains information when users submit RegistrationSurvey responses. The
+	survey is a one-to-one mapping to the registration process.
 	"""
 	__tablename__ = 'RegistrationSurveysTaken'
 
@@ -92,11 +79,11 @@ class RegistrationSurveysTaken(Base, BaseTableMixin):
 										Sequence('registration_survey_taken_id_seq'),
 										index=True, nullable=False, primary_key=True)
 
-	registration_survey_id = Column('registration_survey_id',
-					  				Integer,
-					 				ForeignKey("RegistrationSurveys.registration_survey_id"),
-					  				nullable=False,
-					  				index=True)
+	registration_id = Column('registration_id',
+					  		Integer,
+					 		ForeignKey("UserRegistration.registration_survey_id"),
+					  		nullable=False,
+					  		index=True)
 
 	details = relationship( 'RegistrationSurveyDetails', lazy="select" )
 
@@ -132,10 +119,10 @@ class RegistrationSurveyDetails(Base):
 def _get_response_str( response ):
 	return json.dumps( response )
 
-def store_registration_data( user, data ):
+def store_registration_data( user, registration_id, data ):
 	pass
 
-def store_registration_survey_data( user, data ):
+def store_registration_survey_data( user, registration_id, data ):
 	pass
 
 def _resolve_registration( row, user=None ):
@@ -143,6 +130,12 @@ def _resolve_registration( row, user=None ):
 		row.user = user
 	return row
 
-def get_registrations( user=None, **kwargs ):
-	results = get_filtered_records( user, RegistrationSurveysTaken, **kwargs )
+def get_registrations( user=None, registration_id=None, **kwargs ):
+	"""
+ 	Get all registrations, optionally by user and/or registration_id.
+	"""
+	filters = ()
+	if registration_id:
+		filters = (UserRegistrations.registration_ds_id == registration_id,)
+	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
