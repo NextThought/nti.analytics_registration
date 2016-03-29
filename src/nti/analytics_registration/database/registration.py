@@ -48,13 +48,11 @@ from nti.analytics.database.query_utils import get_filtered_records
 # FIXME: JZ - Table creation disabled for now
 Base = object()
 
-class UserRegistrations(Base, BaseTableMixin):
+class Registrations(Base):
 	"""
-	Hold user registration information. The 'registration_ds_id'
-	will typically be a string identifier.
-	XXX: i2 specific? place in site?
+	Holds the registration identifier for a given string registration.
 	"""
-	__tablename__ = 'UserRegistrations'
+	__tablename__ = 'Registrations'
 
 	registration_id = Column('registration_id', Integer,
 							Sequence('registration_id_seq'),
@@ -63,10 +61,55 @@ class UserRegistrations(Base, BaseTableMixin):
 	registration_ds_id = Column('registration_ds_id', String(128),
 								nullable=False, index=True, autoincrement=False)
 
+class RegistrationMixin(object):
+
+	@declared_attr
+	def registration_id(cls):
+		return Column('registration_id',
+					   Integer,
+					   ForeignKey("Registrations.registration_id"),
+					   nullable=False,
+					   index=True)
+
+class RegistrationSessions(Base, RegistrationMixin):
+	"""
+	Holds session dates feed information for a registration.
+	"""
+	__tablename__ = 'RegistrationSessions'
+
+	session_range = Column('session_range', String(32),
+							nullable=False, index=True, autoincrement=False)
+	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
+
+class RegistrationEnrollmentRules(Base, RegistrationMixin):
+	"""
+	Contains rules about which registration data map to NT courses.
+	"""
+	__tablename__ = 'RegistrationEnrollmentRules'
+
+	school = Column( 'school', String(128), nullable=False, index=False )
+	grade_teaching = Column( 'grade_teaching', String(32), nullable=False, index=False )
+	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
+
+class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
+	"""
+	Hold user registration information.
+	XXX: i2 specific? place in site?
+	"""
+	__tablename__ = 'UserRegistrations'
+
+	user_registration_id = Column('user_registration_id', Integer,
+							Sequence('user_registration_id_seq'),
+							index=True, nullable=False, primary_key=True)
+
 	school = Column( 'school', String(128), nullable=True, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=True, index=False )
-	curriculum = Column( 'curriculum', String(64), nullable=True, index=False )
-	session_date = Column( 'session_date', String(32), nullable=True, index=False )
+	curriculum = Column( 'curriculum', String(32), nullable=True, index=False )
+	phone = Column( 'phone', String(16), nullable=True, index=False )
+	session_range = Column('session_range', String(32),
+							nullable=False, index=True, autoincrement=False)
 
 class RegistrationSurveysTaken(Base, BaseTableMixin):
 	"""
@@ -79,11 +122,11 @@ class RegistrationSurveysTaken(Base, BaseTableMixin):
 										Sequence('registration_survey_taken_id_seq'),
 										index=True, nullable=False, primary_key=True)
 
-	registration_id = Column('registration_id',
-					  		Integer,
-					 		ForeignKey("UserRegistration.registration_survey_id"),
-					  		nullable=False,
-					  		index=True)
+	user_registration_id = Column('user_registration_id',
+					  			Integer,
+					 			ForeignKey("UserRegistration.user_registration_id"),
+					  			nullable=False,
+					  			index=True)
 
 	details = relationship( 'RegistrationSurveyDetails', lazy="select" )
 
@@ -119,6 +162,58 @@ class RegistrationSurveyDetails(Base):
 def _get_response_str( response ):
 	return json.dumps( response )
 
+def get_registration( registration_ds_id ):
+	db = get_analytics_db()
+	registration = db.session.query(Registrations).filter(
+									Registrations.registration_ds_id == registration_ds_id).first()
+	return registration
+
+def get_or_create_registration( registration_ds_id ):
+	registration = get_registration( registration_ds_id )
+	if registration is None:
+		db = get_analytics_db()
+		registration = Registrations( registration_ds_id=registration_ds_id )
+		db.session.add( registration )
+		db.session.flush()
+	return registration
+
+def store_registration_rules( registration_ds_id, rules, truncate=True ):
+	"""
+	Store the given registration rules, optionally truncating previous data.
+	No validation is done here.
+	"""
+	db = get_analytics_db()
+	if truncate:
+		deleted_count = db.session.query( RegistrationEnrollmentRules ).delete()
+		logger.info( 'Truncated RegistrationEnrollmentRules (%s)', deleted_count )
+	registration = get_or_create_registration( registration_ds_id )
+	for rule in rules:
+		rule_record = RegistrationEnrollmentRules( registration_id=registration.registration_id,
+												   school=rule.school,
+												   curriculum=rule.curriculum,
+												   grade_teaching=rule.grade,
+												   course_ntiid=rule.course_ntiid)
+		db.session.add( rule_record )
+	return len( rules )
+
+def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
+	"""
+	Store the given registration sessions, optionally truncating previous data.
+	No validation is done here.
+	"""
+	db = get_analytics_db()
+	if truncate:
+		deleted_count = db.session.query( RegistrationSessions ).delete()
+		logger.info( 'Truncated RegistrationSessions (%s)', deleted_count )
+	registration = get_or_create_registration( registration_ds_id )
+	for session in sessions:
+		session_record = RegistrationSessions( registration_id=registration.registration_id,
+										       session_range=session.school,
+											   curriculum=session.curriculum,
+											   course_ntiid=session.course_ntiid)
+		db.session.add( session_record )
+	return len( sessions )
+
 def store_registration_data( user, registration_id, data ):
 	pass
 
@@ -134,6 +229,7 @@ def get_registrations( user=None, registration_id=None, **kwargs ):
 	"""
  	Get all registrations, optionally by user and/or registration_id.
 	"""
+	# FIXME: No longer works, maybe.
 	filters = ()
 	if registration_id:
 		filters = (UserRegistrations.registration_ds_id == registration_id,)
