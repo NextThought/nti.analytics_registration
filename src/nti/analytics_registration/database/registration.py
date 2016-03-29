@@ -12,34 +12,19 @@ logger = __import__('logging').getLogger(__name__)
 import json
 
 from sqlalchemy import Text
-from sqlalchemy import Float
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import Integer
-from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
 
 from sqlalchemy.schema import Sequence
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declared_attr
 
-from zope import component
-
-from nti.common.property import alias
-
-from nti.analytics_database.interfaces import IAnalyticsIntidIdentifier
-
-from nti.analytics_database.meta_mixins import CourseMixin
-from nti.analytics_database.meta_mixins import DeletedMixin
-from nti.analytics_database.meta_mixins import BaseViewMixin
 from nti.analytics_database.meta_mixins import BaseTableMixin
-from nti.analytics_database.meta_mixins import TimeLengthMixin
-from nti.analytics_database.meta_mixins import ResourceMixin
-from nti.analytics_database.meta_mixins import FileMimeTypeMixin
 
 from nti.analytics_database import Base
 from nti.analytics_database import NTIID_COLUMN_TYPE
-from nti.analytics_database import INTID_COLUMN_TYPE
 
 from nti.analytics.database import get_analytics_db
 from nti.analytics.database import resolve_objects
@@ -61,6 +46,9 @@ class Registrations(Base):
 	registration_ds_id = Column('registration_ds_id', String(128),
 								nullable=False, index=True, autoincrement=False)
 
+	registration_sessions = relationship( 'RegistrationSessions', lazy="select" )
+	registration_rules = relationship( 'RegistrationEnrollmentRules', lazy="select" )
+
 class RegistrationMixin(object):
 
 	@declared_attr
@@ -80,6 +68,9 @@ class RegistrationSessions(Base, RegistrationMixin):
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
 	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	# This does not need to be mapped to our Courses table. We just expose this
+	# to clients and use this information for enrollment. Plus it allows these
+	# courses to not exist at insertion time.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
 class RegistrationEnrollmentRules(Base, RegistrationMixin):
@@ -91,6 +82,7 @@ class RegistrationEnrollmentRules(Base, RegistrationMixin):
 	school = Column( 'school', String(128), nullable=False, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=False, index=False )
 	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	# See note in `RegistrationSessions`.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
 class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
@@ -214,6 +206,7 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 		db.session.add( session_record )
 	return len( sessions )
 
+# FIXME: Implement
 def store_registration_data( user, registration_id, data ):
 	pass
 
@@ -225,7 +218,7 @@ def _resolve_registration( row, user=None ):
 		row.user = user
 	return row
 
-def get_registrations( user=None, registration_id=None, **kwargs ):
+def get_user_registrations( user=None, registration_id=None, **kwargs ):
 	"""
  	Get all registrations, optionally by user and/or registration_id.
 	"""
@@ -237,3 +230,17 @@ def get_registrations( user=None, registration_id=None, **kwargs ):
 		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
+
+def get_registration_rules( registration_ds_id ):
+	"""
+ 	Get the registration rules for the given registration id.
+	"""
+	registration = get_registration( registration_ds_id )
+	return registration and registration.registration_rules
+
+def get_registration_sessions( registration_ds_id ):
+	"""
+ 	Get the registration sessions for the given registration id.
+	"""
+	registration = get_registration( registration_ds_id )
+	return registration and registration.registration_sessions
