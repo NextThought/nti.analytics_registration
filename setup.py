@@ -28,6 +28,7 @@ setup(
 	package_dir={'': 'src'},
 	namespace_packages=['nti'],
 	install_requires=[
+		'setuptools',
 		'nti.analytics',
 		'nti.analytics_database',
 	],
