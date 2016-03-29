@@ -229,9 +229,11 @@ def get_registrations( user=None, registration_id=None, **kwargs ):
 	"""
  	Get all registrations, optionally by user and/or registration_id.
 	"""
-	# FIXME: No longer works, maybe.
 	filters = ()
 	if registration_id:
-		filters = (UserRegistrations.registration_ds_id == registration_id,)
+		registration = get_registration( registration_id )
+		if registration is None:
+			return ()
+		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
