@@ -23,7 +23,7 @@ from sqlalchemy.ext.declarative import declared_attr
 
 from nti.analytics_database.meta_mixins import BaseTableMixin
 
-# from nti.analytics_database import Base
+from nti.analytics_database import Base
 from nti.analytics_database import NTIID_COLUMN_TYPE
 
 from nti.analytics.database import get_analytics_db
@@ -36,9 +36,6 @@ from nti.analytics.database.users import get_or_create_user
 from nti.analytics_registration.exceptions import NoUserRegistrationException
 from nti.analytics_registration.exceptions import DuplicateUserRegistrationException
 from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
-
-# FIXME: JZ - Table creation disabled for now
-Base = object
 
 class Registrations(Base):
 	"""
@@ -66,7 +63,7 @@ class RegistrationMixin(object):
 					   nullable=False,
 					   index=True)
 
-class RegistrationSessions(RegistrationMixin):
+class RegistrationSessions(Base, RegistrationMixin):
 	"""
 	Holds session dates feed information for a registration.
 	"""
@@ -84,7 +81,7 @@ class RegistrationSessions(RegistrationMixin):
 	# courses to not exist at insertion time.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
-class RegistrationEnrollmentRules(RegistrationMixin):
+class RegistrationEnrollmentRules(Base, RegistrationMixin):
 	"""
 	Contains rules about which registration data map to NT courses.
 	"""
@@ -100,10 +97,9 @@ class RegistrationEnrollmentRules(RegistrationMixin):
 	# See note in `RegistrationSessions`.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
-class UserRegistrations(BaseTableMixin, RegistrationMixin):
+class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 	"""
 	Hold user registration information.
-	XXX: i2 specific? place in site?
 	"""
 	__tablename__ = 'UserRegistrations'
 
@@ -120,7 +116,7 @@ class UserRegistrations(BaseTableMixin, RegistrationMixin):
 
 	survey_submission = relationship( 'RegistrationSurveysTaken', lazy="select" )
 
-class RegistrationSurveysTaken(BaseTableMixin):
+class RegistrationSurveysTaken(Base, BaseTableMixin):
 	"""
 	Contains information when users submit RegistrationSurvey responses. The
 	survey is a one-to-one mapping to the registration process.
@@ -133,7 +129,7 @@ class RegistrationSurveysTaken(BaseTableMixin):
 
 	user_registration_id = Column('user_registration_id',
 					  			Integer,
-					 			ForeignKey("UserRegistration.user_registration_id"),
+					 			ForeignKey("UserRegistrations.user_registration_id"),
 					  			nullable=False,
 					  			index=True)
 
@@ -218,7 +214,7 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 	registration = get_or_create_registration( registration_ds_id )
 	for session in sessions:
 		session_record = RegistrationSessions( registration_id=registration.registration_id,
-										       session_range=session.school,
+										       session_range=session.session_range,
 											   curriculum=session.curriculum,
 											   course_ntiid=session.course_ntiid)
 		db.session.add( session_record )
@@ -256,7 +252,7 @@ def store_registration_survey_data( user, timestamp, session_id, registration_ds
 	if not user_registrations:
 		raise NoUserRegistrationException()
 	user_registration = user_registrations[0]
-	if user_registration.survey_submission is not None:
+	if user_registration.survey_submission:
 		raise DuplicateRegistrationSurveyException()
 	user_reg_id = user_registration.user_registration_id
 	db = get_analytics_db()
@@ -269,12 +265,12 @@ def store_registration_survey_data( user, timestamp, session_id, registration_ds
 	db.session.flush()
 	registration_survey_taken_id = survey_submission.registration_survey_taken_id
 	for key, value in data.items():
-		# TODO: Validate this for all types (ordering, matching, free response, etc.
+		# TODO: Validate this for all types (ordering, matching, free response, etc.)
 		response = _get_response_str( value )
 		survey_detail = RegistrationSurveyDetails(
 							registration_survey_taken_id=registration_survey_taken_id,
 							question_id=key,
-							response=response)
+							_response=response)
 		db.session.add( survey_detail )
 
 def _resolve_registration( row, user=None ):
