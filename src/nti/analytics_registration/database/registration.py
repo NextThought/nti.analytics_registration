@@ -65,6 +65,10 @@ class RegistrationSessions(Base, RegistrationMixin):
 	"""
 	__tablename__ = 'RegistrationSessions'
 
+	registration_session_id = Column('registration_session_id', Integer,
+							Sequence('registration_session_id_seq'),
+							index=True, nullable=False, primary_key=True)
+
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
 	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
@@ -78,6 +82,10 @@ class RegistrationEnrollmentRules(Base, RegistrationMixin):
 	Contains rules about which registration data map to NT courses.
 	"""
 	__tablename__ = 'RegistrationEnrollmentRules'
+
+	registration_rule_id = Column('registration_rule_id', Integer,
+							Sequence('registration_rule_id_seq'),
+							index=True, nullable=False, primary_key=True)
 
 	school = Column( 'school', String(128), nullable=False, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=False, index=False )
@@ -127,6 +135,10 @@ class RegistrationSurveyDetails(Base):
 	Stores survey submission details in a simple key/value store.
 	"""
 	__tablename__ = 'RegistrationSurveyDetails'
+
+	registration_survey_detail_id = Column('registration_survey_detail_id', Integer,
+										Sequence('registration_survey_detail_id_seq'),
+										index=True, nullable=False, primary_key=True)
 
 	registration_survey_taken_id = Column('registration_survey_taken_id',
 					 					Integer,
@@ -208,6 +220,7 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 
 # FIXME: Implement
 def store_registration_data( user, registration_id, data ):
+	# FIXME: One submission per user validation
 	pass
 
 def store_registration_survey_data( user, registration_id, data ):
@@ -231,16 +244,31 @@ def get_user_registrations( user=None, registration_id=None, **kwargs ):
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
 
-def get_registration_rules( registration_ds_id ):
+def get_registration_rules( registration_ds_id, sort=True, sort_descending=False ):
 	"""
- 	Get the registration rules for the given registration id.
+ 	Get the registration rules for the given registration id. By
+ 	default, sorted by insertion order ascending.
 	"""
 	registration = get_registration( registration_ds_id )
-	return registration and registration.registration_rules
+	results = None
+	if registration and registration.registration_rules:
+		results = registration.registration_rules
+		if sort:
+			results = sorted( results,
+							  key=lambda x: x.registration_rule_id,
+							  reverse=sort_descending )
+	return results
 
-def get_registration_sessions( registration_ds_id ):
+def get_registration_sessions( registration_ds_id, sort=True, sort_descending=False ):
 	"""
- 	Get the registration sessions for the given registration id.
+ 	Get the registration sessions for the given registration id. By
+ 	default, sorted by insertion order ascending.
 	"""
 	registration = get_registration( registration_ds_id )
-	return registration and registration.registration_sessions
+	if registration and registration.registration_sessions:
+		results = registration.registration_rules
+		if sort:
+			results = sorted( results,
+							  key=lambda x: x.registration_session_id,
+							  reverse=sort_descending )
+	return results
