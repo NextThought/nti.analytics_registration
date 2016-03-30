@@ -317,7 +317,7 @@ def get_registration_sessions( registration_ds_id, sort=True, sort_descending=Fa
 	"""
 	registration = get_registration( registration_ds_id )
 	if registration and registration.registration_sessions:
-		results = registration.registration_rules
+		results = registration.registration_sessions
 		if sort:
 			results = sorted( results,
 							  key=lambda x: x.registration_session_id,
