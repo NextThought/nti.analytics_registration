@@ -23,7 +23,7 @@ from sqlalchemy.ext.declarative import declared_attr
 
 from nti.analytics_database.meta_mixins import BaseTableMixin
 
-from nti.analytics_database import Base
+# from nti.analytics_database import Base
 from nti.analytics_database import NTIID_COLUMN_TYPE
 
 from nti.analytics.database import get_analytics_db
@@ -38,7 +38,7 @@ from nti.analytics_registration.exceptions import DuplicateUserRegistrationExcep
 from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
 
 # FIXME: JZ - Table creation disabled for now
-Base = object()
+Base = object
 
 class Registrations(Base):
 	"""
@@ -66,7 +66,7 @@ class RegistrationMixin(object):
 					   nullable=False,
 					   index=True)
 
-class RegistrationSessions(Base, RegistrationMixin):
+class RegistrationSessions(RegistrationMixin):
 	"""
 	Holds session dates feed information for a registration.
 	"""
@@ -84,7 +84,7 @@ class RegistrationSessions(Base, RegistrationMixin):
 	# courses to not exist at insertion time.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
-class RegistrationEnrollmentRules(Base, RegistrationMixin):
+class RegistrationEnrollmentRules(RegistrationMixin):
 	"""
 	Contains rules about which registration data map to NT courses.
 	"""
@@ -100,7 +100,7 @@ class RegistrationEnrollmentRules(Base, RegistrationMixin):
 	# See note in `RegistrationSessions`.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
-class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
+class UserRegistrations(BaseTableMixin, RegistrationMixin):
 	"""
 	Hold user registration information.
 	XXX: i2 specific? place in site?
@@ -120,7 +120,7 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 
 	survey_submission = relationship( 'RegistrationSurveysTaken', lazy="select" )
 
-class RegistrationSurveysTaken(Base, BaseTableMixin):
+class RegistrationSurveysTaken(BaseTableMixin):
 	"""
 	Contains information when users submit RegistrationSurvey responses. The
 	survey is a one-to-one mapping to the registration process.
