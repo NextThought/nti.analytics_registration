@@ -28,7 +28,14 @@ from nti.analytics_database import NTIID_COLUMN_TYPE
 
 from nti.analytics.database import get_analytics_db
 from nti.analytics.database import resolve_objects
+
 from nti.analytics.database.query_utils import get_filtered_records
+
+from nti.analytics.database.users import get_or_create_user
+
+from nti.analytics_registration.exceptions import NoUserRegistrationException
+from nti.analytics_registration.exceptions import DuplicateUserRegistrationException
+from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
 
 # FIXME: JZ - Table creation disabled for now
 Base = object()
@@ -111,6 +118,8 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
 
+	survey_submission = relationship( 'RegistrationSurveysTaken', lazy="select" )
+
 class RegistrationSurveysTaken(Base, BaseTableMixin):
 	"""
 	Contains information when users submit RegistrationSurvey responses. The
@@ -162,9 +171,6 @@ class RegistrationSurveyDetails(Base):
 			except ValueError:
 				pass
 		return response
-
-def _get_response_str( response ):
-	return json.dumps( response )
 
 def get_registration( registration_ds_id ):
 	db = get_analytics_db()
@@ -218,13 +224,58 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 		db.session.add( session_record )
 	return len( sessions )
 
-# FIXME: Implement
-def store_registration_data( user, registration_id, data ):
-	# FIXME: One submission per user validation
-	pass
+def store_registration_data( user, timestamp, session_id, registration_ds_id, data ):
+	"""
+ 	Store user registration data.
+	"""
+	if get_user_registrations( user, registration_ds_id ):
+		raise DuplicateUserRegistrationException()
+	db = get_analytics_db()
+	user = get_or_create_user( user )
+	registration = get_or_create_registration( registration_ds_id )
+	user_registration = UserRegistrations( user_id=user.user_id,
+										   timestamp=timestamp,
+										   session_id=session_id,
+										   registration_id=registration.registration_id,
+										   school=data.school,
+										   grade_teaching=data.grade_teaching,
+										   phone=data.phone,
+										   curriculum=data.curriculum,
+										   session_range=data.session_range)
+	db.session.add( user_registration )
+	db.session.flush()
 
-def store_registration_survey_data( user, registration_id, data ):
-	pass
+def _get_response_str( response ):
+	return json.dumps( response )
+
+def store_registration_survey_data( user, timestamp, session_id, registration_ds_id, data ):
+	"""
+ 	Store user survey data.
+	"""
+	user_registrations = get_user_registrations( user, registration_ds_id )
+	if not user_registrations:
+		raise NoUserRegistrationException()
+	user_registration = user_registrations[0]
+	if user_registration.survey_submission is not None:
+		raise DuplicateRegistrationSurveyException()
+	user_reg_id = user_registration.user_registration_id
+	db = get_analytics_db()
+	user = get_or_create_user( user )
+	survey_submission = RegistrationSurveysTaken( user_id=user.user_id,
+												  timestamp=timestamp,
+												  session_id=session_id,
+												  user_registration_id=user_reg_id )
+	db.session.add( survey_submission )
+	db.session.flush()
+	registration_survey_taken_id = survey_submission.registration_survey_taken_id
+	for key, value in data.items():
+		# TODO: Validate this for all types (ordering, matching, free response, etc.
+		response = _get_response_str( value )
+		survey_detail = RegistrationSurveyDetails(
+							registration_survey_taken_id=registration_survey_taken_id,
+							question_id=key,
+							response=response)
+		db.session.add( survey_detail )
 
 def _resolve_registration( row, user=None ):
 	if user is not None:
