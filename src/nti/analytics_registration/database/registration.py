@@ -323,3 +323,34 @@ def get_registration_sessions( registration_ds_id, sort=True, sort_descending=Fa
 							  key=lambda x: x.registration_session_id,
 							  reverse=sort_descending )
 	return results
+
+def _get_course_for_registration( user_registration, registration_ds_id ):
+	"""
+	Currently, school and grade_teaching should map to a *single* course ntiid.
+	"""
+	db = get_analytics_db()
+	result = None
+	school = user_registration.school
+	grade_teaching = user_registration.grade_teaching
+	rules = db.session.query( RegistrationEnrollmentRules ).filter(
+							  RegistrationEnrollmentRules.school == school,
+							  RegistrationEnrollmentRules.grade_teaching == grade_teaching ).all()
+	if rules:
+		if len( rules ) > 1 and len( {x.course_ntiid for x in rules} ) > 1:
+			# Data issue; return nothing.
+			logger.warn( 'Multiple course ntiids mapping to registration (%s) (%s) (%s)',
+						 school, grade_teaching, registration_ds_id )
+		else:
+			result = rules[0].course_ntiid
+	return result
+
+def get_course_ntiid_for_user_registration( user, registration_ds_id ):
+	"""
+	For a given user and registration, return the corresponding course NTIID.
+	"""
+	result = None
+	user_registrations = get_user_registrations( user, registration_ds_id )
+	if user_registrations:
+		user_registration = user_registrations[0]
+		result = _get_course_for_registration( user_registration, registration_ds_id )
+	return result
