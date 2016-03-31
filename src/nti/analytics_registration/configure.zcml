@@ -1,0 +1,18 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml"
+			xmlns:ext="http://nextthought.com/ntp/ext">
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+	<include package="zope.security" />
+
+	<!-- Generations -->
+	<utility factory=".generations.install._AnalyticsRegistrationSchemaManager"
+			 name="nti.dataserver-analytics_registration"
+			 provides="zope.generations.interfaces.IInstallableSchemaManager"/>
+
+</configure>
+
