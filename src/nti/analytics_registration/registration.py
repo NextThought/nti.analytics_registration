@@ -22,6 +22,8 @@ store_registration_rules = db_registration.store_registration_rules
 store_registration_sessions = db_registration.store_registration_sessions
 get_course_ntiid_for_user_registration = db_registration.get_course_ntiid_for_user_registration
 
+delete_user_registrations = db_registration.delete_user_registrations
+
 def store_registration_data( user, timestamp, registration_ds_id, data ):
 	timestamp = timestamp_type( timestamp )
 	session_id = get_nti_session_id()

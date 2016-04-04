@@ -114,7 +114,9 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
 
-	survey_submission = relationship( 'RegistrationSurveysTaken', lazy="select" )
+	survey_submission = relationship( 'RegistrationSurveysTaken',
+									  cascade="all, delete-orphan",
+									  lazy="select" )
 
 class RegistrationSurveysTaken(Base, BaseTableMixin):
 	"""
@@ -133,7 +135,9 @@ class RegistrationSurveysTaken(Base, BaseTableMixin):
 					  			nullable=False,
 					  			index=True)
 
-	details = relationship( 'RegistrationSurveyDetails', lazy="select" )
+	details = relationship( 'RegistrationSurveyDetails',
+							cascade="all, delete-orphan",
+							lazy="select" )
 
 class RegistrationSurveyDetails(Base):
 	"""
@@ -290,6 +294,26 @@ def get_user_registrations( user=None, registration_id=None, **kwargs ):
 		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
+
+def delete_user_registrations( user=None, registration_id=None ):
+	"""
+ 	Delete the registrations (and surveys etc) associated with the
+ 	given user and registration_id. Should probably only be used
+ 	by admins in test environments.
+	"""
+	user_registrations = get_user_registrations( user, registration_id )
+	result = []
+	if user_registrations:
+		db = get_analytics_db()
+		for registration in user_registrations:
+			logger.info( 'Deleting registration (user=%s) (registration=%s)',
+						 user, registration_id )
+			db.session.delete( registration )
+			course_ntiid = _get_course_for_registration( registration,
+														 registration_id )
+			# Return tuples of registration and course_ntiid.
+			result.append( (registration, course_ntiid) )
+	return result
 
 def get_registration_rules( registration_ds_id, sort=True, sort_descending=False ):
 	"""
