@@ -336,6 +336,7 @@ def get_registration_sessions( registration_ds_id, sort=True, sort_descending=Fa
  	default, sorted by insertion order ascending.
 	"""
 	registration = get_registration( registration_ds_id )
+	results = None
 	if registration and registration.registration_sessions:
 		results = registration.registration_sessions
 		if sort:
