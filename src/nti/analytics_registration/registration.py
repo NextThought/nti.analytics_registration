@@ -30,8 +30,9 @@ def store_registration_data( user, timestamp, registration_ds_id, data ):
 	db_registration.store_registration_data( user, timestamp, session_id,
 											 registration_ds_id, data )
 
-def store_registration_survey_data( user, timestamp, registration_ds_id, data ):
+def store_registration_survey_data( user, timestamp, registration_ds_id, version, data ):
 	timestamp = timestamp_type( timestamp )
 	session_id = get_nti_session_id()
 	db_registration.store_registration_survey_data( user, timestamp, session_id,
-													registration_ds_id, data )
+													registration_ds_id,
+													version, data )

@@ -129,6 +129,8 @@ class RegistrationSurveysTaken(Base, BaseTableMixin):
 										Sequence('registration_survey_taken_id_seq'),
 										index=True, nullable=False, primary_key=True)
 
+	survey_version = Column( 'survey_version', String(32), nullable=True, index=False )
+
 	user_registration_id = Column('user_registration_id',
 					  			Integer,
 					 			ForeignKey("UserRegistrations.user_registration_id"),
@@ -248,7 +250,7 @@ def store_registration_data( user, timestamp, session_id, registration_ds_id, da
 def _get_response_str( response ):
 	return json.dumps( response )
 
-def store_registration_survey_data( user, timestamp, session_id, registration_ds_id, data ):
+def store_registration_survey_data( user, timestamp, session_id, registration_ds_id, version, data ):
 	"""
  	Store user survey data.
 	"""
@@ -258,18 +260,19 @@ def store_registration_survey_data( user, timestamp, session_id, registration_ds
 	user_registration = user_registrations[0]
 	if user_registration.survey_submission:
 		raise DuplicateRegistrationSurveyException()
+
 	user_reg_id = user_registration.user_registration_id
 	db = get_analytics_db()
 	user = get_or_create_user( user )
 	survey_submission = RegistrationSurveysTaken( user_id=user.user_id,
 												  timestamp=timestamp,
 												  session_id=session_id,
+												  survey_version=version,
 												  user_registration_id=user_reg_id )
 	db.session.add( survey_submission )
 	db.session.flush()
 	registration_survey_taken_id = survey_submission.registration_survey_taken_id
 	for key, value in data.items():
-		# TODO: Validate this for all types (ordering, matching, free response, etc.)
 		response = _get_response_str( value )
 		survey_detail = RegistrationSurveyDetails(
 							registration_survey_taken_id=registration_survey_taken_id,
