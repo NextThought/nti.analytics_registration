@@ -195,12 +195,15 @@ def store_registration_rules( registration_ds_id, rules, truncate=True ):
 	No validation is done here.
 	"""
 	db = get_analytics_db()
-	if truncate:
-		deleted_count = db.session.query( RegistrationEnrollmentRules ).delete()
-		logger.info( 'Truncated RegistrationEnrollmentRules (%s)', deleted_count )
 	registration = get_or_create_registration( registration_ds_id )
+	registration_id = registration.registration_id
+	if truncate:
+		deleted_count = db.session.query( RegistrationEnrollmentRules ).filter(
+										  RegistrationEnrollmentRules.registration_id == registration_id ).delete()
+		logger.info( 'Deleted RegistrationEnrollmentRules (%s) (%s)',
+					 registration_id, deleted_count )
 	for rule in rules:
-		rule_record = RegistrationEnrollmentRules( registration_id=registration.registration_id,
+		rule_record = RegistrationEnrollmentRules( registration_id=registration_id,
 												   school=rule.school,
 												   curriculum=rule.curriculum,
 												   grade_teaching=rule.grade,
@@ -214,12 +217,15 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 	No validation is done here.
 	"""
 	db = get_analytics_db()
-	if truncate:
-		deleted_count = db.session.query( RegistrationSessions ).delete()
-		logger.info( 'Truncated RegistrationSessions (%s)', deleted_count )
 	registration = get_or_create_registration( registration_ds_id )
+	registration_id = registration.registration_id
+	if truncate:
+		deleted_count = db.session.query( RegistrationSessions ).filter(
+										  RegistrationSessions.registration_id == registration_id ).delete()
+		logger.info( 'Deleted RegistrationSessions (%s) (%s)',
+					 registration_id, deleted_count )
 	for session in sessions:
-		session_record = RegistrationSessions( registration_id=registration.registration_id,
+		session_record = RegistrationSessions( registration_id=registration_id,
 										       session_range=session.session_range,
 											   curriculum=session.curriculum,
 											   course_ntiid=session.course_ntiid)
