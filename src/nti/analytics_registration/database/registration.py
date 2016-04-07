@@ -201,7 +201,7 @@ def store_registration_rules( registration_ds_id, rules, truncate=True ):
 		deleted_count = db.session.query( RegistrationEnrollmentRules ).filter(
 										  RegistrationEnrollmentRules.registration_id == registration_id ).delete()
 		logger.info( 'Deleted RegistrationEnrollmentRules (%s) (%s)',
-					 registration_id, deleted_count )
+					 registration_ds_id, deleted_count )
 	for rule in rules:
 		rule_record = RegistrationEnrollmentRules( registration_id=registration_id,
 												   school=rule.school,
@@ -223,7 +223,7 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 		deleted_count = db.session.query( RegistrationSessions ).filter(
 										  RegistrationSessions.registration_id == registration_id ).delete()
 		logger.info( 'Deleted RegistrationSessions (%s) (%s)',
-					 registration_id, deleted_count )
+					 registration_ds_id, deleted_count )
 	for session in sessions:
 		session_record = RegistrationSessions( registration_id=registration_id,
 										       session_range=session.session_range,
