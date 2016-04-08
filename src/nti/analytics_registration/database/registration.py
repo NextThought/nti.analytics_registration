@@ -110,6 +110,7 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 	school = Column( 'school', String(128), nullable=True, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=True, index=False )
 	curriculum = Column( 'curriculum', String(32), nullable=True, index=False )
+	employee_id = Column( 'employee_id', String(32), nullable=True, index=False )
 	phone = Column( 'phone', String(16), nullable=True, index=False )
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
@@ -249,6 +250,7 @@ def store_registration_data( user, timestamp, session_id, registration_ds_id, da
 										   grade_teaching=data.grade_teaching,
 										   phone=data.phone,
 										   curriculum=data.curriculum,
+										   employee_id=data.employee_id,
 										   session_range=data.session_range)
 	db.session.add( user_registration )
 	db.session.flush()

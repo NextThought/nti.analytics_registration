@@ -9,11 +9,18 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-generation = 1
+generation = 2
 
-from zope.generations.generations import SchemaManager
+from zope import interface
 
-class _AnalyticsRegistrationSchemaManager(SchemaManager):
+from zope.generations.generations import SchemaManager as BaseSchemaManager
+
+from zope.generations.interfaces import IInstallableSchemaManager
+
+from nti.analytics_registration.generations.evolve2 import evolve as evolve2
+
+@interface.implementer(IInstallableSchemaManager)
+class _AnalyticsRegistrationSchemaManager(BaseSchemaManager):
 	"""
 	A schema manager that we can register as a utility in ZCML.
 	"""
@@ -22,6 +29,10 @@ class _AnalyticsRegistrationSchemaManager(SchemaManager):
 											generation=generation,
 											minimum_generation=generation,
 											package_name='nti.analytics_registration.generations')
+
+	def install(self, context):
+		evolve(context)
+
 def evolve(context):
-	pass
+	evolve2( context )
 

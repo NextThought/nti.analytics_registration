@@ -10,6 +10,9 @@
 	<include package="zope.security" />
 
 	<!-- Generations -->
+	<include package="zope.generations" />
+	<include package="zope.generations" file="subscriber.zcml" />
+
 	<utility factory=".generations.install._AnalyticsRegistrationSchemaManager"
 			 name="nti.dataserver-analytics_registration"
 			 provides="zope.generations.interfaces.IInstallableSchemaManager"/>
