@@ -15,6 +15,13 @@ class NoUserRegistrationException( Exception ):
 	"""
 	pass
 
+class InvalidCourseMappingException( Exception ):
+	"""
+	Indicates the given course NTIID is invalid according
+	to the registration rules.
+	"""
+	pass
+
 class DuplicateUserRegistrationException( Exception ):
 	"""
 	Indicates the user has already registered.

@@ -34,6 +34,7 @@ from nti.analytics.database.query_utils import get_filtered_records
 from nti.analytics.database.users import get_or_create_user
 
 from nti.analytics_registration.exceptions import NoUserRegistrationException
+from nti.analytics_registration.exceptions import InvalidCourseMappingException
 from nti.analytics_registration.exceptions import DuplicateUserRegistrationException
 from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
 
@@ -233,23 +234,45 @@ def store_registration_sessions( registration_ds_id, sessions, truncate=True ):
 		db.session.add( session_record )
 	return len( sessions )
 
+def _validate_registration( registration_id, registration_ds_id, data ):
+	"""
+	Validate we received a correct registration mapping to a course,
+	returning the curriculum.
+	"""
+	db = get_analytics_db()
+	school = data.school
+	grade_teaching = data.grade_teaching
+	course_ntiid = data.course_ntiid
+	rule = db.session.query( RegistrationEnrollmentRules ).filter(
+							 RegistrationEnrollmentRules.registration_id == registration_id,
+							 RegistrationEnrollmentRules.school == school,
+							 RegistrationEnrollmentRules.grade_teaching == grade_teaching,
+							 RegistrationEnrollmentRules.course_ntiid == course_ntiid ).first()
+	if rule is None:
+		logger.info( 'No mapping for %s (school=%s) (grade=%s) (ntiid=%s)',
+					 registration_ds_id, school, grade_teaching, course_ntiid)
+		raise InvalidCourseMappingException()
+	return rule.curriculum
+
 def store_registration_data( user, timestamp, session_id, registration_ds_id, data ):
 	"""
  	Store user registration data.
 	"""
 	if get_user_registrations( user, registration_ds_id ):
 		raise DuplicateUserRegistrationException()
+	registration = get_or_create_registration( registration_ds_id )
+	registration_id = registration.registration_id
+	curriculum = _validate_registration( registration_id, registration_ds_id, data )
 	db = get_analytics_db()
 	user = get_or_create_user( user )
-	registration = get_or_create_registration( registration_ds_id )
 	user_registration = UserRegistrations( user_id=user.user_id,
 										   timestamp=timestamp,
 										   session_id=session_id,
-										   registration_id=registration.registration_id,
+										   registration_id=registration_id,
 										   school=data.school,
 										   grade_teaching=data.grade_teaching,
 										   phone=data.phone,
-										   curriculum=data.curriculum,
+										   curriculum=curriculum,
 										   employee_id=data.employee_id,
 										   session_range=data.session_range)
 	db.session.add( user_registration )
@@ -293,35 +316,35 @@ def _resolve_registration( row, user=None ):
 		row.user = user
 	return row
 
-def get_user_registrations( user=None, registration_id=None, **kwargs ):
+def get_user_registrations( user=None, registration_ds_id=None, **kwargs ):
 	"""
  	Get all registrations, optionally by user and/or registration_id.
 	"""
 	filters = ()
-	if registration_id:
-		registration = get_registration( registration_id )
+	if registration_ds_id:
+		registration = get_registration( registration_ds_id )
 		if registration is None:
 			return ()
 		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	return resolve_objects( _resolve_registration, results, user=user )
 
-def delete_user_registrations( user=None, registration_id=None ):
+def delete_user_registrations( user=None, registration_ds_id=None ):
 	"""
  	Delete the registrations (and surveys etc) associated with the
  	given user and registration_id. Should probably only be used
  	by admins in test environments.
 	"""
-	user_registrations = get_user_registrations( user, registration_id )
+	user_registrations = get_user_registrations( user, registration_ds_id )
 	result = []
 	if user_registrations:
 		db = get_analytics_db()
 		for registration in user_registrations:
 			logger.info( 'Deleting registration (user=%s) (registration=%s)',
-						 user, registration_id )
+						 user, registration_ds_id )
 			db.session.delete( registration )
 			course_ntiid = _get_course_for_registration( registration,
-														 registration_id )
+														 registration_ds_id )
 			# Return tuples of registration and course_ntiid.
 			result.append( (registration, course_ntiid) )
 	return result
@@ -358,15 +381,19 @@ def get_registration_sessions( registration_ds_id, sort=True, sort_descending=Fa
 
 def _get_course_for_registration( user_registration, registration_ds_id ):
 	"""
-	Currently, school and grade_teaching should map to a *single* course ntiid.
+	Use the registration info to retrieve a course ntiid.
 	"""
 	db = get_analytics_db()
 	result = None
+	registration_id = user_registration.registration_id
 	school = user_registration.school
 	grade_teaching = user_registration.grade_teaching
+	curriculum = user_registration.curriculum
 	rules = db.session.query( RegistrationEnrollmentRules ).filter(
+							  RegistrationEnrollmentRules.registration_id == registration_id,
 							  RegistrationEnrollmentRules.school == school,
-							  RegistrationEnrollmentRules.grade_teaching == grade_teaching ).all()
+							  RegistrationEnrollmentRules.grade_teaching == grade_teaching,
+							  RegistrationEnrollmentRules.curriculum == curriculum ).all()
 	if rules:
 		if len( rules ) > 1 and len( {x.course_ntiid for x in rules} ) > 1:
 			# Data issue; return nothing.
@@ -374,15 +401,4 @@ def _get_course_for_registration( user_registration, registration_ds_id ):
 						 school, grade_teaching, registration_ds_id )
 		else:
 			result = rules[0].course_ntiid
-	return result
-
-def get_course_ntiid_for_user_registration( user, registration_ds_id ):
-	"""
-	For a given user and registration, return the corresponding course NTIID.
-	"""
-	result = None
-	user_registrations = get_user_registrations( user, registration_ds_id )
-	if user_registrations:
-		user_registration = user_registrations[0]
-		result = _get_course_for_registration( user_registration, registration_ds_id )
 	return result
