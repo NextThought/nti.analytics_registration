@@ -29,7 +29,7 @@ def evolve_job():
 	setHooks()
 	db = get_analytics_db()
 
-	if db.defaultSQLite:
+	if db.defaultSQLite or db.engine.name == 'sqlite':
 		return
 
 	# Cannot use transaction with alter table scripts and mysql
