@@ -38,6 +38,8 @@ from nti.analytics_registration.exceptions import InvalidCourseMappingException
 from nti.analytics_registration.exceptions import DuplicateUserRegistrationException
 from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
 
+COURSE_TITLE_LENGTH = 128
+
 class Registrations(Base):
 	"""
 	Holds the registration identifier for a given string registration.
@@ -76,7 +78,7 @@ class RegistrationSessions(Base, RegistrationMixin):
 
 	session_range = Column('session_range', String(32),
 							nullable=False, index=True, autoincrement=False)
-	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	curriculum = Column( 'curriculum', String(COURSE_TITLE_LENGTH), nullable=False, index=False )
 	# This does not need to be mapped to our Courses table. We just expose this
 	# to clients and use this information for enrollment. Plus it allows these
 	# courses to not exist at insertion time.
@@ -94,7 +96,7 @@ class RegistrationEnrollmentRules(Base, RegistrationMixin):
 
 	school = Column( 'school', String(128), nullable=False, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=False, index=False )
-	curriculum = Column( 'curriculum', String(32), nullable=False, index=False )
+	curriculum = Column( 'curriculum', String(COURSE_TITLE_LENGTH), nullable=False, index=False )
 	# See note in `RegistrationSessions`.
 	course_ntiid = Column( 'course_ntiid', NTIID_COLUMN_TYPE, nullable=False, index=False )
 
@@ -110,7 +112,7 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
 
 	school = Column( 'school', String(128), nullable=True, index=False )
 	grade_teaching = Column( 'grade_teaching', String(32), nullable=True, index=False )
-	curriculum = Column( 'curriculum', String(32), nullable=True, index=False )
+	curriculum = Column( 'curriculum', String(COURSE_TITLE_LENGTH), nullable=False, index=False )
 	employee_id = Column( 'employee_id', String(32), nullable=True, index=False )
 	phone = Column( 'phone', String(16), nullable=True, index=False )
 	session_range = Column('session_range', String(32),
