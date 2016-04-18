@@ -38,6 +38,8 @@ from nti.analytics_registration.exceptions import InvalidCourseMappingException
 from nti.analytics_registration.exceptions import DuplicateUserRegistrationException
 from nti.analytics_registration.exceptions import DuplicateRegistrationSurveyException
 
+from nti.contenttypes.courses.interfaces import ICourseCatalogEntry
+
 COURSE_TITLE_LENGTH = 128
 
 class Registrations(Base):
@@ -318,7 +320,7 @@ def _resolve_registration( row, user=None ):
 		row.user = user
 	return row
 
-def get_user_registrations( user=None, registration_ds_id=None, **kwargs ):
+def get_user_registrations( user=None, registration_ds_id=None, course=None, **kwargs ):
 	"""
  	Get all registrations, optionally by user and/or registration_id.
 	"""
@@ -329,7 +331,39 @@ def get_user_registrations( user=None, registration_ds_id=None, **kwargs ):
 			return ()
 		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
-	return resolve_objects( _resolve_registration, results, user=user )
+	user_registrations = resolve_objects( _resolve_registration, results, user=user )
+	if course is not None:
+		entry = ICourseCatalogEntry( course )
+		course_ntiid = entry.ntiid
+		db = get_analytics_db()
+		# Exclude registrations not mapped to our course
+		# XXX: We could make this easier...
+		def _do_include( user_registration ):
+			rule_for_course = db.session.query( RegistrationEnrollmentRules ).filter(
+								 RegistrationEnrollmentRules.registration_id == user_registration.registration_id,
+								 RegistrationEnrollmentRules.school == user_registration.school,
+								 RegistrationEnrollmentRules.grade_teaching == user_registration.grade_teaching,
+								 RegistrationEnrollmentRules.course_ntiid == course_ntiid ).first()
+			return rule_for_course is not None
+		user_registrations = [x for x in user_registrations if _do_include(x)]
+	return user_registrations
+
+def get_all_survey_questions( user_registration ):
+	"""
+	Given a user registration, return all survey questions we know about
+	for that registration id.
+	"""
+	db = get_analytics_db()
+	registration_id = user_registration.registration_id
+	result = set()
+	registrations = db.session.query( UserRegistrations ).filter(
+							  		  UserRegistrations.registration_id == registration_id ).all()
+	for registration in registrations:
+		if registration.survey_submission:
+			survey = registration.survey_submission[0]
+			for detail in survey.details:
+				result.add( detail.question_id )
+	return result
 
 def delete_user_registrations( user=None, registration_ds_id=None ):
 	"""

@@ -16,6 +16,7 @@ from nti.analytics.sessions import get_nti_session_id
 
 get_user_registrations = db_registration.get_user_registrations
 get_registration_rules = db_registration.get_registration_rules
+get_all_survey_questions = db_registration.get_all_survey_questions
 get_registration_sessions = db_registration.get_registration_sessions
 
 store_registration_rules = db_registration.store_registration_rules

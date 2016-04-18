@@ -17,5 +17,11 @@
 			 name="nti.dataserver-analytics_registration"
 			 provides="zope.generations.interfaces.IInstallableSchemaManager"/>
 
+	<!-- Stats utility -->
+	<subscriber factory=".stats._RegistrationStatsSource"
+			for="nti.dataserver.interfaces.IUser
+			 	  nti.contenttypes.courses.interfaces.ICourseInstance"
+			provides="nti.analytics.stats.interfaces.IAnalyticsStatsSource" />
+
 </configure>
 
