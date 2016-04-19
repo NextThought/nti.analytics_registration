@@ -9,8 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from collections import namedtuple
-
 from zope import interface
 
 from nti.analytics.stats.interfaces import IStats
@@ -40,7 +38,8 @@ def _get_question_key( question_id ):
 @interface.implementer( IStats )
 class _SurveyStats(object):
 
-	def __init__(self, results, possible_questions):
+	def __init__(self, survey_version, results, possible_questions):
+		self.survey_version = survey_version
 		seen = set()
 		possible_questions = {_get_question_key(x) for x in possible_questions}
 		for survey_question in results:
@@ -86,5 +85,6 @@ class _RegistrationStatsSource(object):
 			survey_submission = registration.survey_submission[0]
 			survey_results = survey_submission.details
 			all_questions = get_all_survey_questions( registration )
-			result = _SurveyStats( survey_results, all_questions )
+			survey_version = survey_submission.survey_version
+			result = _SurveyStats( survey_version, survey_results, all_questions )
 		return result
