@@ -17,7 +17,7 @@ from nti.analytics.stats.interfaces import IAnalyticsStatsSource
 from nti.analytics_registration.registration import get_user_registrations
 from nti.analytics_registration.registration import get_all_survey_questions
 
-from nti.common.property import readproperty
+from nti.common.property import Lazy
 
 @interface.implementer( IStats )
 class _RegistrationStats(object):
@@ -64,12 +64,12 @@ class _RegistrationStatsSource(object):
 		self.user = user
 		self.course = course
 
-	@property
+	@Lazy
 	def _registrations(self):
 		records = get_user_registrations( user=self.user, course=self.course )
 		return records[0] if records else None
 
-	@readproperty
+	@Lazy
 	def RegistrationStats(self):
 		registration = self._registrations
 		result = None
@@ -77,7 +77,7 @@ class _RegistrationStatsSource(object):
 			result = _RegistrationStats( registration )
 		return result
 
-	@readproperty
+	@Lazy
 	def RegistrationSurveyStats(self):
 		registration = self._registrations
 		result = None
