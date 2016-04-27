@@ -11,6 +11,8 @@ logger = __import__('logging').getLogger(__name__)
 
 import json
 
+from six import string_types
+
 from sqlalchemy import Text
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -348,21 +350,27 @@ def get_user_registrations( user=None, registration_ds_id=None, course=None, **k
 		user_registrations = [x for x in user_registrations if _do_include(x)]
 	return user_registrations
 
-def get_all_survey_questions( user_registration ):
+def get_all_survey_questions( registration ):
 	"""
-	Given a user registration, return all survey questions we know about
+	Given a registration, return all survey questions we know about
 	for that registration id.
 	"""
 	db = get_analytics_db()
-	registration_id = user_registration.registration_id
+	if isinstance( registration, string_types ):
+		registration = get_registration( registration )
+		registration_id = registration.registration_id if registration is not None else None
+	else:
+		registration_id = getattr( registration, 'registration_id', None )
+
 	result = set()
-	registrations = db.session.query( UserRegistrations ).filter(
-							  		  UserRegistrations.registration_id == registration_id ).all()
-	for registration in registrations:
-		if registration.survey_submission:
-			survey = registration.survey_submission[0]
-			for detail in survey.details:
-				result.add( detail.question_id )
+	if registration_id:
+		registrations = db.session.query( UserRegistrations ).filter(
+								  		  UserRegistrations.registration_id == registration_id ).all()
+		for registration in registrations:
+			if registration.survey_submission:
+				survey = registration.survey_submission[0]
+				for detail in survey.details:
+					result.add( detail.question_id )
 	return result
 
 def delete_user_registrations( user=None, registration_ds_id=None ):
