@@ -45,7 +45,11 @@ class _SurveyStats(object):
 		for survey_question in results:
 			var = _get_question_key( survey_question.question_id )
 			seen.add( var )
-			setattr( self, var, survey_question.response )
+			response = survey_question.response
+			if isinstance( response, list ):
+				# Make sure our list response is readable.
+				response = ', '.join( response )
+			setattr( self, var, response )
 		# Make sure we have placeholder values for user.
 		no_responses = possible_questions - seen
 		for no_response in no_responses:
@@ -54,8 +58,10 @@ class _SurveyStats(object):
 @interface.implementer(IAnalyticsStatsSource)
 class _RegistrationStatsSource(object):
 	"""
-	An access stats source that pulls data from analytics.
+	For a user's registration, build stats for registration and
+	registration survey.
 	"""
+
 	__external_class_name__ = "AnalyticsRegistrationStatsSource"
 	mime_type = mimeType = 'application/vnd.nextthought.analytics_registration.registrationstatssource'
 	display_name = 'Registration'
