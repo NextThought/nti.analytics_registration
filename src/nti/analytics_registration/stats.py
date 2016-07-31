@@ -26,7 +26,7 @@ class _RegistrationStats(object):
 		self.school = record.school
 		self.grade_teaching = record.grade_teaching
 		self.curriculum = record.curriculum
-		self.employee_id = record.employee_id
+		self.employee_id = str( record.employee_id )
 		self.phone = record.phone
 		self.session_range = record.session_range
 
@@ -48,7 +48,7 @@ class _SurveyStats(object):
 			response = survey_question.response
 			if isinstance( response, list ):
 				# Make sure our list response is readable.
-				response = ', '.join( response )
+				response = ', '.join( (str(x) for x in response) )
 			setattr( self, var, response )
 		# Make sure we have placeholder values for user.
 		no_responses = possible_questions - seen
