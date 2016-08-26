@@ -17,7 +17,7 @@ from nti.analytics.stats.interfaces import IAnalyticsStatsSource
 from nti.analytics_registration.registration import get_user_registrations
 from nti.analytics_registration.registration import get_all_survey_questions
 
-from nti.common.property import Lazy
+from nti.property.property import Lazy
 
 @interface.implementer( IStats )
 class _RegistrationStats(object):

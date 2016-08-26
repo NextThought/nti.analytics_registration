@@ -34,6 +34,7 @@ setup(
 		'setuptools',
 		'nti.analytics',
 		'nti.analytics_database',
+		'nti.contenttypes.courses'
 	],
 	entry_points=entry_points
 )

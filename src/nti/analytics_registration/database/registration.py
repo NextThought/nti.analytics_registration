@@ -19,9 +19,11 @@ from sqlalchemy import String
 from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 
-from sqlalchemy.schema import Sequence
-from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declared_attr
+
+from sqlalchemy.orm import relationship
+
+from sqlalchemy.schema import Sequence
 
 from nti.analytics_database.meta_mixins import BaseTableMixin
 

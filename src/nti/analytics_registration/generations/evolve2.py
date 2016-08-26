@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-generation 34
+.. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -17,8 +18,9 @@ from sqlalchemy import inspect
 
 from zope.component.hooks import setHooks
 
-from alembic.operations import Operations
 from alembic.migration import MigrationContext
+
+from alembic.operations import Operations
 
 from nti.analytics.generations.utils import do_evolve
 from nti.analytics.generations.utils import mysql_column_exists
