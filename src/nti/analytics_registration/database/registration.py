@@ -336,7 +336,8 @@ def get_user_registrations( user=None, registration_ds_id=None, course=None, **k
 		filters = (UserRegistrations.registration_id == registration.registration_id,)
 	results = get_filtered_records( user, UserRegistrations, filters=filters, **kwargs )
 	user_registrations = resolve_objects( _resolve_registration, results, user=user )
-	if course is not None:
+	# XXX: Rethink this filtering, some users are manually placed in courses.
+	if course is not None and False:
 		entry = ICourseCatalogEntry( course )
 		course_ntiid = entry.ntiid
 		db = get_analytics_db()
