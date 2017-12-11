@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from nti.analytics.common import timestamp_type
 
@@ -25,15 +24,19 @@ store_registration_sessions = db_registration.store_registration_sessions
 
 delete_user_registrations = db_registration.delete_user_registrations
 
+logger = __import__('logging').getLogger(__name__)
+
+
 def store_registration_data(user, timestamp, registration_ds_id, data):
-	timestamp = timestamp_type(timestamp)
-	session_id = get_nti_session_id()
-	db_registration.store_registration_data(user, timestamp, session_id,
-											registration_ds_id, data)
+    timestamp = timestamp_type(timestamp)
+    session_id = get_nti_session_id()
+    db_registration.store_registration_data(user, timestamp, session_id,
+                                            registration_ds_id, data)
+
 
 def store_registration_survey_data(user, timestamp, registration_ds_id, version, data):
-	timestamp = timestamp_type(timestamp)
-	session_id = get_nti_session_id()
-	db_registration.store_registration_survey_data(	user, timestamp, session_id,
-													registration_ds_id,
-													version, data)
+    timestamp = timestamp_type(timestamp)
+    session_id = get_nti_session_id()
+    db_registration.store_registration_survey_data(user, timestamp, session_id,
+                                                   registration_ds_id,
+                                                   version, data)
