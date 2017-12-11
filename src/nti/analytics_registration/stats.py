@@ -52,7 +52,7 @@ class _SurveyStats(object):
             response = survey_question.response
             if isinstance(response, list):
                 # Make sure our list response is readable.
-                response = ', '.join((str(x) for x in response))
+                response = ', '.join(str(x) for x in response)
             setattr(self, var, response)
         # Make sure we have placeholder values for user.
         no_responses = possible_questions - seen
