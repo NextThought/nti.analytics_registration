@@ -63,6 +63,7 @@ setup(
         'nti.analytics',
         'nti.analytics_database',
         'nti.contenttypes.courses',
+	'nti.dataserver',
         'zope.cachedescriptors',
         'zope.component',
         'zope.generations',
