@@ -11,6 +11,8 @@ entry_points = {
 }
 
 TESTS_REQUIRE = [
+    'nti.dataserver[test]',
+    'nti.app.testing',
     'nti.testing',
     'zope.testrunner',
 ]
@@ -62,6 +64,7 @@ setup(
         'nti.analytics',
         'nti.analytics_database',
         'nti.contenttypes.courses',
+	'nti.dataserver',
         'zope.cachedescriptors',
         'zope.component',
         'zope.generations',
