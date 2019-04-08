@@ -12,7 +12,6 @@ entry_points = {
 
 TESTS_REQUIRE = [
     'nti.dataserver[test]',
-    'nti.dataserver[extras]',
     'nti.app.testing',
     'nti.testing',
     'zope.testrunner',
