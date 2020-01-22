@@ -63,19 +63,23 @@ class Registrations(Base):
 
     registration_sessions = relationship('RegistrationSessions', lazy="select")
 
-    registration_rules = relationship('RegistrationEnrollmentRules', 
+    registration_rules = relationship('RegistrationEnrollmentRules',
                                       lazy="select")
 
 
 class RegistrationMixin(object):
 
     @declared_attr
-    def registration_id(cls):  # pylint: disable=no-self-argument
+    def registration_id(self):  # pylint: disable=no-self-argument
         return Column('registration_id',
                       Integer,
                       ForeignKey("Registrations.registration_id"),
                       nullable=False,
                       index=True)
+
+    @declared_attr
+    def _registration_record(self):
+        return relationship('Registrations', lazy="select", foreign_keys=[self.registration_id])
 
 
 class RegistrationSessions(Base, RegistrationMixin):
@@ -91,7 +95,7 @@ class RegistrationSessions(Base, RegistrationMixin):
     session_range = Column('session_range', String(32),
                            nullable=False, index=True, autoincrement=False)
 
-    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH), 
+    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH),
                         nullable=False, index=False)
     # This does not need to be mapped to our Courses table. We just expose this
     # to clients and use this information for enrollment. Plus it allows these
@@ -114,7 +118,7 @@ class RegistrationEnrollmentRules(Base, RegistrationMixin):
 
     grade_teaching = Column('grade_teaching', String(32),
                             nullable=False, index=False)
-    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH), 
+    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH),
                         nullable=False, index=False)
     # See note in `RegistrationSessions`.
     course_ntiid = Column('course_ntiid', NTIID_COLUMN_TYPE,
@@ -136,7 +140,7 @@ class UserRegistrations(Base, BaseTableMixin, RegistrationMixin):
     grade_teaching = Column('grade_teaching', String(32),
                             nullable=True, index=False)
 
-    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH), 
+    curriculum = Column('curriculum', String(COURSE_TITLE_LENGTH),
                         nullable=False, index=False)
 
     employee_id = Column('employee_id', String(32), nullable=True, index=False)
@@ -192,6 +196,10 @@ class RegistrationSurveyDetails(Base):
                                           nullable=False,
                                           index=True)
 
+    @declared_attr
+    def _survey_record(self):
+        return relationship('RegistrationSurveysTaken', lazy="select", foreign_keys=[self.registration_survey_taken_id])
+
     #: Ex. 'survey_question1'
     question_id = Column('question_id', String(64),
                          nullable=False, index=False)
@@ -226,7 +234,6 @@ def get_or_create_registration(registration_ds_id):
         db = get_analytics_db()
         registration = Registrations(registration_ds_id=registration_ds_id)
         db.session.add(registration)
-        db.session.flush()
     return registration
 
 
@@ -237,19 +244,18 @@ def store_registration_rules(registration_ds_id, rules, truncate=True):
     """
     db = get_analytics_db()
     registration = get_or_create_registration(registration_ds_id)
-    registration_id = registration.registration_id
     if truncate:
         deleted_count = db.session.query(RegistrationEnrollmentRules).filter(
-            RegistrationEnrollmentRules.registration_id == registration_id
+            RegistrationEnrollmentRules.registration_id == registration.registration_id
         ).delete()
         logger.info('Deleted RegistrationEnrollmentRules (%s) (%s)',
                     registration_ds_id, deleted_count)
     for rule in rules:
-        rule_record = RegistrationEnrollmentRules(registration_id=registration_id,
-                                                  school=rule.school,
+        rule_record = RegistrationEnrollmentRules(school=rule.school,
                                                   curriculum=rule.curriculum,
                                                   grade_teaching=rule.grade,
                                                   course_ntiid=rule.course_ntiid)
+        rule_record._registration_record = registration
         db.session.add(rule_record)
     return len(rules)
 
@@ -261,17 +267,16 @@ def store_registration_sessions(registration_ds_id, sessions, truncate=True):
     """
     db = get_analytics_db()
     registration = get_or_create_registration(registration_ds_id)
-    registration_id = registration.registration_id
     if truncate:
         deleted_count = db.session.query(RegistrationSessions).filter(
-            RegistrationSessions.registration_id == registration_id).delete()
+            RegistrationSessions.registration_id == registration.registration_id).delete()
         logger.info('Deleted RegistrationSessions (%s) (%s)',
                     registration_ds_id, deleted_count)
     for session in sessions:
-        session_record = RegistrationSessions(registration_id=registration_id,
-                                              session_range=session.session_range,
+        session_record = RegistrationSessions(session_range=session.session_range,
                                               curriculum=session.curriculum,
                                               course_ntiid=session.course_ntiid)
+        session_record._registration_record = registration
         db.session.add(session_record)
     return len(sessions)
 
@@ -305,24 +310,22 @@ def store_registration_data(user, timestamp, session_id, registration_ds_id, dat
     if get_user_registrations(user, registration_ds_id):
         raise DuplicateUserRegistrationException()
     registration = get_or_create_registration(registration_ds_id)
-    registration_id = registration.registration_id
-    curriculum = _validate_registration(registration_id, 
-                                        registration_ds_id, 
+    curriculum = _validate_registration(registration.registration_id,
+                                        registration_ds_id,
                                         data)
     db = get_analytics_db()
     user = get_or_create_user(user)
-    user_registration = UserRegistrations(user_id=user.user_id,
-                                          timestamp=timestamp,
+    user_registration = UserRegistrations(timestamp=timestamp,
                                           session_id=session_id,
-                                          registration_id=registration_id,
                                           school=data.school,
                                           grade_teaching=data.grade_teaching,
                                           phone=data.phone,
                                           curriculum=curriculum,
                                           employee_id=data.employee_id,
                                           session_range=data.session_range)
+    user_registration._registration_record = registration
+    user_registration._user_record = user
     db.session.add(user_registration)
-    db.session.flush()
 
 
 def _get_response_str(response):
@@ -343,19 +346,17 @@ def store_registration_survey_data(user, timestamp, session_id, registration_ds_
     user_reg_id = user_registration.user_registration_id
     db = get_analytics_db()
     user = get_or_create_user(user)
-    survey_submission = RegistrationSurveysTaken(user_id=user.user_id,
-                                                 timestamp=timestamp,
+    survey_submission = RegistrationSurveysTaken(timestamp=timestamp,
                                                  session_id=session_id,
                                                  survey_version=version,
                                                  user_registration_id=user_reg_id)
+    survey_submission._user_record = user
     db.session.add(survey_submission)
-    db.session.flush()
-    registration_survey_taken_id = survey_submission.registration_survey_taken_id
     for key, value in data.items():
         response = _get_response_str(value)
-        survey_detail = RegistrationSurveyDetails(registration_survey_taken_id=registration_survey_taken_id,
-                                                  question_id=key,
+        survey_detail = RegistrationSurveyDetails(question_id=key,
                                                   _response=response)
+        survey_detail._survey_record = survey_submission
         db.session.add(survey_detail)
 
 
